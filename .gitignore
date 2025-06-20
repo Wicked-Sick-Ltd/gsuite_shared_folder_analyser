@@ -1,7 +1,14 @@
+# sensitive files
+.env
+*.json
+service_account.json
+
+# Python cruft
 __pycache__/
 *.pyc
+
+# Other 
 *.log
 *.csv
 *.xlsx
 *.old
-.env

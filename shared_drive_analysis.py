@@ -1,13 +1,20 @@
+import os
 from dotenv import load_dotenv
 load_dotenv()
 
-import os
-
+# === CONFIGURATION ===
 SERVICE_ACCOUNT_FILE = os.getenv('SERVICE_ACCOUNT_FILE')
 OUTPUT_CSV = os.getenv('OUTPUT_CSV', 'shared_drive_report.csv')
 OUTPUT_TREE = os.getenv('OUTPUT_TREE', 'tree.txt')
+SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly']
 
+# ✅ Now it's safe to validate
+if not SERVICE_ACCOUNT_FILE or not os.path.isfile(SERVICE_ACCOUNT_FILE):
+    raise FileNotFoundError(f"Service account file not found: {SERVICE_ACCOUNT_FILE}")
 
+print("SERVICE_ACCOUNT_FILE loaded:", SERVICE_ACCOUNT_FILE)
+
+# === DEPENDENCIES ===
 import argparse
 import csv
 from collections import defaultdict
@@ -17,11 +24,6 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from tqdm import tqdm
 
-# === CONFIGURATION ===
-SERVICE_ACCOUNT_FILE = 'service_account.json'
-SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly']
-OUTPUT_CSV = 'shared_drive_report.csv'
-OUTPUT_TREE = 'tree.txt'
 
 # === ARGUMENT PARSER ===
 parser = argparse.ArgumentParser(description='Analyze Google Shared Drive')
@@ -31,8 +33,10 @@ args = parser.parse_args()
 
 # === AUTHENTICATION ===
 creds = service_account.Credentials.from_service_account_file(
-    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES
+)
 drive_service = build('drive', 'v3', credentials=creds)
+
 
 # === UTILS ===
 def human_readable_size(size_bytes):
