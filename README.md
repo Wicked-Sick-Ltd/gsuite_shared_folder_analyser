@@ -14,11 +14,21 @@ pip install -r requirements.txt
 
 ## Usage
 
-python shared_drive_analsis.py --drive-id [DRIVE_ID] --verbose
+python shared_drive_analysis.py --drive-id [DRIVE_ID] --verbose
 
 ## Outputs
 
 - `shared_drive_report.csv`
 - `tree.txt`
 
- 
+<!-- repository-guidance:begin -->
+## Contributing and agent guidance
+
+- [Contributor guide](CONTRIBUTING.md): development workflow and validation.
+- [Agent instructions](AGENTS.md): shared guidance for Codex and other coding agents.
+- [Security policy](SECURITY.md): private vulnerability reporting.
+
+## Repository license
+
+MIT licensed; see [LICENSE](LICENSE). Preserve third-party notices.
+<!-- repository-guidance:end -->
