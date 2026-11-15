@@ -33,6 +33,11 @@ def human_readable_size(size_bytes):
         size_bytes /= 1024
     return f"{size_bytes:.1f} PB"
 
+def terminal_text(text):
+    # Drive names are set by drive organizers; drop control and format characters
+    # (newline, carriage return, ESC, ...) so they cannot drive the operator's terminal.
+    return "".join(ch for ch in str(text) if ch.isprintable())
+
 def get_all_shared_drives():
     shared_drives = []
     page_token = None
@@ -113,8 +118,8 @@ today = datetime.today().strftime('%Y%m%d')
 shared_drives = get_all_shared_drives()
 
 for drive in shared_drives:
-    drive_name = drive['name'].replace(" ", "_")
     drive_id = drive['id']
+    drive_name = terminal_text(drive['name']).replace(" ", "_")
     print(f"🔍 Processing Shared Drive: {drive_name} ({drive_id})")
 
     try:
@@ -149,8 +154,8 @@ for drive in shared_drives:
         with open(tree_path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(tree_lines))
 
-        print(f"✅ Done: {drive_name} → {csv_path}, {tree_path}")
+        print(f"✅ Done: {drive_name} ({drive_id}) → {csv_path}, {tree_path}")
 
     except Exception as e:
-        print(f"❌ Error processing {drive_name}: {e}")
+        print(f"❌ Error processing {drive_name} ({drive_id}): {terminal_text(e)}")
 

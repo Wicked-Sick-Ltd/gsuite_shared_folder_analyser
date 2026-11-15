@@ -46,6 +46,11 @@ def human_readable_size(size_bytes):
         size_bytes /= 1024
     return f"{size_bytes:.1f} PB"
 
+def terminal_text(text):
+    # Drive names are user-controlled; drop control and format characters
+    # (newline, carriage return, ESC, ...) so they cannot drive the operator's terminal.
+    return "".join(ch for ch in str(text) if ch.isprintable())
+
 def get_all_files(drive_id):
     files = []
     page_token = None
@@ -109,7 +114,7 @@ def print_tree(file, children, file_map, prefix='', out_lines=None):
     if out_lines is not None:
         out_lines.append(line)
     if args.verbose:
-        print(line)
+        print(terminal_text(line))
     for child in sorted(children.get(file['id'], []), key=lambda x: x['name']):
         if child['mimeType'] == 'application/vnd.google-apps.folder':
             print_tree(child, children, file_map, prefix + '  ', out_lines)
