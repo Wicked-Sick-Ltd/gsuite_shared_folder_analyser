@@ -164,6 +164,7 @@ def run_orgwide_scanner(pages, file_status_by_drive, file_name_by_drive=None, er
             try:
                 sys.path.remove(str(REPO_ROOT))
             except ValueError:
+                # REPO_ROOT was not inserted, or it was already removed.
                 pass
     return stdout.getvalue(), stderr.getvalue(), http.uris, reports, outside
 

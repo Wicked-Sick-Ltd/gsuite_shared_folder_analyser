@@ -130,6 +130,7 @@ def run_verbose_scanner(drive_id, folder_name, status=200):
             try:
                 sys.path.remove(str(REPO_ROOT))
             except ValueError:
+                # REPO_ROOT was not inserted, or it was already removed.
                 pass
     return stdout.getvalue(), stderr.getvalue(), tree_text, csv_text, raised
 
