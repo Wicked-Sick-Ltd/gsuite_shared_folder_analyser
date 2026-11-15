@@ -6,6 +6,7 @@ from collections import defaultdict
 from tqdm import tqdm
 import os
 import csv
+import unicodedata
 from datetime import datetime
 
 # Load environment variables
@@ -33,10 +34,35 @@ def human_readable_size(size_bytes):
         size_bytes /= 1024
     return f"{size_bytes:.1f} PB"
 
+# Bidi controls can spoof a label on screen. They are format characters, not Cc.
+_TERMINAL_BIDI = frozenset(
+    "\u061c\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069"
+)
+_TERMINAL_LINE_SEPARATORS = frozenset("\u2028\u2029")
+
 def terminal_text(text):
-    # Drive names are set by drive organizers; drop control and format characters
-    # (newline, carriage return, ESC, ...) so they cannot drive the operator's terminal.
-    return "".join(ch for ch in str(text) if ch.isprintable())
+    # Drive names are set by drive organizers. Drop C0/C1 controls (newline,
+    # carriage return, ESC, DEL), bidi controls, and line/paragraph separators
+    # so a name cannot forge log lines or spoof the terminal. Other spaces
+    # become a normal space so word boundaries stay visible.
+    kept = []
+    for ch in str(text):
+        if (
+            unicodedata.category(ch) == "Cc"
+            or ch in _TERMINAL_BIDI
+            or ch in _TERMINAL_LINE_SEPARATORS
+        ):
+            continue
+        if unicodedata.category(ch) == "Zs" and ch != " ":
+            kept.append(" ")
+        else:
+            kept.append(ch)
+    return "".join(kept)
+
+def report_file_token(drive_id):
+    # The id is part of the report path. Keep it from adding separators.
+    safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in str(drive_id))
+    return safe or "unknown"
 
 def get_all_shared_drives():
     shared_drives = []
@@ -119,7 +145,11 @@ shared_drives = get_all_shared_drives()
 
 for drive in shared_drives:
     drive_id = drive['id']
+    # Console label only. Report paths also include the drive id so two names
+    # that differ by stripped characters cannot overwrite each other's files.
     drive_name = terminal_text(drive['name']).replace(" ", "_")
+    file_token = report_file_token(drive_id)
+    report_name = f"{drive_name}_{file_token}" if drive_name else file_token
     print(f"🔍 Processing Shared Drive: {drive_name} ({drive_id})")
 
     try:
@@ -127,8 +157,8 @@ for drive in shared_drives:
         file_map, children = build_tree(files)
         folders = [f for f in files if f['mimeType'] == 'application/vnd.google-apps.folder']
 
-        csv_path = os.path.join(OUTPUT_DIR, f"{today}_report_{drive_name}.csv")
-        tree_path = os.path.join(OUTPUT_DIR, f"{today}_tree_{drive_name}.txt")
+        csv_path = os.path.join(OUTPUT_DIR, f"{today}_report_{report_name}.csv")
+        tree_path = os.path.join(OUTPUT_DIR, f"{today}_tree_{report_name}.txt")
 
         with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)

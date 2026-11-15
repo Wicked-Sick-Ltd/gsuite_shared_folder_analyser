@@ -1,4 +1,5 @@
 import os
+import unicodedata
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -46,10 +47,30 @@ def human_readable_size(size_bytes):
         size_bytes /= 1024
     return f"{size_bytes:.1f} PB"
 
+# Bidi controls can spoof a label on screen. They are format characters, not Cc.
+_TERMINAL_BIDI = frozenset(
+    "\u061c\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069"
+)
+_TERMINAL_LINE_SEPARATORS = frozenset("\u2028\u2029")
+
 def terminal_text(text):
-    # Drive names are user-controlled; drop control and format characters
-    # (newline, carriage return, ESC, ...) so they cannot drive the operator's terminal.
-    return "".join(ch for ch in str(text) if ch.isprintable())
+    # Folder names are user-controlled. Drop C0/C1 controls (newline,
+    # carriage return, ESC, DEL), bidi controls, and line/paragraph separators
+    # so a name cannot forge log lines or spoof the terminal. Other spaces
+    # become a normal space so word boundaries stay visible.
+    kept = []
+    for ch in str(text):
+        if (
+            unicodedata.category(ch) == "Cc"
+            or ch in _TERMINAL_BIDI
+            or ch in _TERMINAL_LINE_SEPARATORS
+        ):
+            continue
+        if unicodedata.category(ch) == "Zs" and ch != " ":
+            kept.append(" ")
+        else:
+            kept.append(ch)
+    return "".join(kept)
 
 def get_all_files(drive_id):
     files = []
