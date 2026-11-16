@@ -6,6 +6,7 @@ from collections import defaultdict
 from tqdm import tqdm
 import os
 import csv
+import re
 from datetime import datetime
 
 # Load environment variables
@@ -14,6 +15,9 @@ SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE")
 SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly']
 OUTPUT_DIR = "reports"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+DRIVE_ID_PATTERN = re.compile(r'[A-Za-z0-9_-]+')
+UNSAFE_LABEL_CHARS = re.compile(r'[^A-Za-z0-9_-]+')
+MAX_LABEL_LENGTH = 60
 
 # Validate service account file
 if not SERVICE_ACCOUNT_FILE or not os.path.isfile(SERVICE_ACCOUNT_FILE):
@@ -108,12 +112,24 @@ def print_tree(file, children, file_map, prefix='', out_lines=None):
         if child['mimeType'] == 'application/vnd.google-apps.folder':
             print_tree(child, children, file_map, prefix + '  ', out_lines)
 
+def report_path(date_prefix, kind, drive_id, drive_name, extension):
+    # Drive names are chosen by whoever manages the drive, so only a
+    # restricted label derived from them may reach the filename.
+    if not DRIVE_ID_PATTERN.fullmatch(drive_id):
+        raise ValueError(f"Unexpected shared drive id: {drive_id!r}")
+    label = UNSAFE_LABEL_CHARS.sub('_', drive_name).strip('_')[:MAX_LABEL_LENGTH]
+    stem = f"{date_prefix}_{kind}_{label}_{drive_id}" if label else f"{date_prefix}_{kind}_{drive_id}"
+    path = os.path.join(OUTPUT_DIR, f"{stem}.{extension}")
+    if os.path.dirname(os.path.realpath(path)) != os.path.realpath(OUTPUT_DIR):
+        raise ValueError(f"Report path escapes {OUTPUT_DIR}: {path!r}")
+    return path
+
 # Main execution
 today = datetime.today().strftime('%Y%m%d')
 shared_drives = get_all_shared_drives()
 
 for drive in shared_drives:
-    drive_name = drive['name'].replace(" ", "_")
+    drive_name = drive['name']
     drive_id = drive['id']
     print(f"🔍 Processing Shared Drive: {drive_name} ({drive_id})")
 
@@ -122,8 +138,8 @@ for drive in shared_drives:
         file_map, children = build_tree(files)
         folders = [f for f in files if f['mimeType'] == 'application/vnd.google-apps.folder']
 
-        csv_path = os.path.join(OUTPUT_DIR, f"{today}_report_{drive_name}.csv")
-        tree_path = os.path.join(OUTPUT_DIR, f"{today}_tree_{drive_name}.txt")
+        csv_path = report_path(today, 'report', drive_id, drive_name, 'csv')
+        tree_path = report_path(today, 'tree', drive_id, drive_name, 'txt')
 
         with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
