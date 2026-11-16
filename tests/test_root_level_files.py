@@ -34,6 +34,9 @@ class _Request:
 
 
 class _FakeDriveService:
+    def __init__(self, drive_files):
+        self._drive_files = drive_files
+
     def drives(self):
         service = types.SimpleNamespace()
         service.list = lambda **kwargs: _Request({'drives': [{'id': DRIVE_ID, 'name': 'Team Drive'}]})
@@ -42,13 +45,13 @@ class _FakeDriveService:
     def files(self):
         def list_files(**kwargs):
             assert kwargs['driveId'] == DRIVE_ID
-            return _Request({'files': [dict(f) for f in DRIVE_FILES]})
+            return _Request({'files': [dict(f) for f in self._drive_files]})
         service = types.SimpleNamespace()
         service.list = list_files
         return service
 
 
-def _stub_modules():
+def _stub_modules(drive_files):
     google = types.ModuleType('google')
     oauth2 = types.ModuleType('google.oauth2')
     service_account = types.ModuleType('google.oauth2.service_account')
@@ -60,7 +63,7 @@ def _stub_modules():
 
     googleapiclient = types.ModuleType('googleapiclient')
     discovery = types.ModuleType('googleapiclient.discovery')
-    discovery.build = lambda *args, **kwargs: _FakeDriveService()
+    discovery.build = lambda *args, **kwargs: _FakeDriveService(drive_files)
     googleapiclient.discovery = discovery
 
     dotenv = types.ModuleType('dotenv')
@@ -94,9 +97,9 @@ class RootLevelFilesTest(unittest.TestCase):
         os.chdir(self._cwd)
         self._tmp.cleanup()
 
-    def _run_script(self, name, argv, env):
+    def _run_script(self, name, argv, env, drive_files=DRIVE_FILES):
         env = dict(env, SERVICE_ACCOUNT_FILE=self.service_account_file)
-        with mock.patch.dict(sys.modules, _stub_modules()), \
+        with mock.patch.dict(sys.modules, _stub_modules(drive_files)), \
                 mock.patch.dict(os.environ, env), \
                 mock.patch.object(sys, 'argv', argv), \
                 redirect_stdout(StringIO()) as out:
@@ -141,6 +144,41 @@ class RootLevelFilesTest(unittest.TestCase):
             {'OUTPUT_CSV': csv_path, 'OUTPUT_TREE': os.path.join(self.workdir, 'tree.txt')},
         )
         self._assert_root_files_reported(self._read_rows(csv_path))
+
+    def test_root_files_with_unusual_parents_are_reported_in_both_scripts(self):
+        drive_files = [
+            {'id': 'dup-a', 'name': 'same.bin', 'mimeType': 'application/octet-stream',
+             'parents': [DRIVE_ID], 'size': '10'},
+            {'id': 'dup-b', 'name': 'same.bin', 'mimeType': 'application/octet-stream',
+             'parents': [DRIVE_ID], 'size': '20'},
+            {'id': 'no-parents', 'name': 'orphan.bin', 'mimeType': 'application/octet-stream',
+             'size': '40'},
+            {'id': 'under-file', 'name': 'under-file.bin', 'mimeType': 'application/octet-stream',
+             'parents': ['dup-a'], 'size': '80'},
+        ]
+        expected = {'same.bin': ['10', '20'], 'orphan.bin': ['40'], 'under-file.bin': ['80']}
+
+        self._run_script('shared_drive_orgwide_analysis.py', ['shared_drive_orgwide_analysis.py'], {},
+                         drive_files=drive_files)
+        orgwide_csv = glob.glob(os.path.join(self.workdir, 'reports', '*_report_Team_Drive.csv'))[0]
+
+        single_csv = os.path.join(self.workdir, 'report.csv')
+        self._run_script(
+            'shared_drive_analysis.py',
+            ['shared_drive_analysis.py', '--drive-id', DRIVE_ID],
+            {'OUTPUT_CSV': single_csv, 'OUTPUT_TREE': os.path.join(self.workdir, 'tree.txt')},
+            drive_files=drive_files,
+        )
+
+        for csv_path in (orgwide_csv, single_csv):
+            rows = self._read_rows(csv_path)
+            drive_rows = [r for r in rows if r['MimeType'] == 'drive']
+            self.assertEqual(len(drive_rows), 1, rows)
+            self.assertEqual(drive_rows[0]['Total Size (Bytes)'], '150')
+            self.assertEqual(drive_rows[0]['File Count'], '4')
+            for name, sizes in expected.items():
+                reported = sorted(r['Total Size (Bytes)'] for r in rows if r['Folder Path'].endswith(name))
+                self.assertEqual(reported, sizes, (name, rows))
 
 
 if __name__ == '__main__':
