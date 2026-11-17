@@ -21,6 +21,8 @@ python shared_drive_analysis.py --drive-id [DRIVE_ID] --verbose
 - `shared_drive_report.csv`
 - `tree.txt`
 
+Each folder is one line, indented by two spaces per level. A leading blank, a control character, a line break, or a bidi control is escaped, and so is `\`. A joiner after the first character stays as typed.
+
 <!-- repository-guidance:begin -->
 ## Contributing and agent guidance
 

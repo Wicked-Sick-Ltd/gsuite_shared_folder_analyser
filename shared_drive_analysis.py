@@ -108,8 +108,15 @@ def get_folder_path(file_id, file_map):
 _NAMED_ESCAPES = {'\t': '\\t', '\n': '\\n', '\r': '\\r'}
 # Not whitespace to str.isspace(), but rendered as blank columns.
 _BLANK_GLYPHS = {'\u115f', '\u1160', '\u2800', '\u3164', '\uffa0'}
+# Bidi overrides and isolates can reorder the visible columns of a line.
+_BIDI_CONTROLS = {
+    '\u202a', '\u202b', '\u202c', '\u202d', '\u202e',
+    '\u2066', '\u2067', '\u2068', '\u2069',
+}
 
 def _escape_char(ch):
+    if ch == '\\':
+        return '\\\\'
     if ch in _NAMED_ESCAPES:
         return _NAMED_ESCAPES[ch]
     code = ord(ch)
@@ -121,13 +128,25 @@ def _escape_char(ch):
 
 def tree_label(name):
     # A tree line's depth is shown only by its space prefix, so the name must
-    # not move its first visible column or break the line.
+    # not move its first visible column or break the line. After the first
+    # character, joiners and private-use characters stay as typed.
     out = []
     for i, ch in enumerate(name):
         category = unicodedata.category(ch)
-        hidden = category[0] == 'C' or category in ('Zl', 'Zp')
+        hidden = (
+            ch == '\\'
+            or category == 'Cc'
+            or category in ('Zl', 'Zp')
+            or ch in _BIDI_CONTROLS
+        )
         if i == 0:
-            hidden = hidden or ch.isspace() or ch in _BLANK_GLYPHS or category[0] == 'M'
+            hidden = (
+                hidden
+                or category[0] == 'C'
+                or ch.isspace()
+                or ch in _BLANK_GLYPHS
+                or category[0] == 'M'
+            )
         out.append(_escape_char(ch) if hidden else ch)
     return ''.join(out)
 
