@@ -6,8 +6,8 @@ import sys
 import tempfile
 import types
 import unittest
+import unittest.mock
 from pathlib import Path
-from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FOLDER = 'application/vnd.google-apps.folder'
@@ -69,7 +69,7 @@ def stub_modules(files):
     google = types.ModuleType('google')
     oauth2 = types.ModuleType('google.oauth2')
     service_account = types.ModuleType('google.oauth2.service_account')
-    service_account.Credentials = mock.Mock()
+    service_account.Credentials = unittest.mock.Mock()
     oauth2.service_account = service_account
     google.oauth2 = oauth2
 
@@ -107,8 +107,8 @@ class FolderPathCsvMixin:
             cwd = os.getcwd()
             os.chdir(tmp)
             try:
-                with mock.patch.dict(sys.modules, stub_modules(files)), \
-                        mock.patch.dict(os.environ, {
+                with unittest.mock.patch.dict(sys.modules, stub_modules(files)), \
+                        unittest.mock.patch.dict(os.environ, {
                             'SERVICE_ACCOUNT_FILE': str(credentials),
                             'OUTPUT_CSV': str(Path(tmp, 'report.csv')),
                             'OUTPUT_TREE': str(Path(tmp, 'tree.txt')),
@@ -158,6 +158,17 @@ class FolderPathCsvMixin:
         self.assertEqual(by_id['spoof']['Folder Path'], 'Finance\\/Payroll')
         self.assertEqual(by_id['trailing-child']['Folder Path'], 'Finance\\\\/Payroll')
 
+    def test_id_columns_follow_the_original_columns(self):
+        def reader(_, csv_path, __):
+            with open(csv_path, newline='', encoding='utf-8') as f:
+                return next(csv.reader(f))
+        header = self.run_with(SPOOF_FILES, reader)
+        self.assertEqual(header, [
+            'Folder Path', 'File Count', 'Total Size (Bytes)', 'Readable Size',
+            'Latest Modified Time', 'Owner Email', 'MimeType',
+            'Folder ID', 'Parent ID',
+        ])
+
     def test_rows_carry_folder_and_parent_ids(self):
         rows = self.read_rows()
         by_id = {row['Folder ID']: row for row in rows}
@@ -186,7 +197,7 @@ class OrgWideScriptTest(FolderPathCsvMixin, unittest.TestCase):
 
 class SingleDriveScriptTest(FolderPathCsvMixin, unittest.TestCase):
     def run_script(self, tmp):
-        with mock.patch.object(sys, 'argv', ['shared_drive_analysis.py', '--drive-id', DRIVE_ID]):
+        with unittest.mock.patch.object(sys, 'argv', ['shared_drive_analysis.py', '--drive-id', DRIVE_ID]):
             g = runpy.run_path(str(REPO_ROOT / 'shared_drive_analysis.py'), run_name='__main__')
         return g, Path(tmp, 'report.csv'), Path(tmp, 'tree.txt')
 

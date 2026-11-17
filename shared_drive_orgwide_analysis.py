@@ -137,9 +137,9 @@ for drive in shared_drives:
         with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow([
-                'Folder ID', 'Parent ID', 'Folder Path', 'File Count',
-                'Total Size (Bytes)', 'Readable Size',
-                'Latest Modified Time', 'Owner Email', 'MimeType'
+                'Folder Path', 'File Count', 'Total Size (Bytes)', 'Readable Size',
+                'Latest Modified Time', 'Owner Email', 'MimeType',
+                'Folder ID', 'Parent ID'
             ])
 
             for folder in tqdm(folders, desc=f"Analyzing {drive_name}"):
@@ -147,9 +147,9 @@ for drive in shared_drives:
                 path = get_folder_path(folder['id'], file_map)
                 owner = folder.get('owners', [{}])[0].get('emailAddress', 'unknown')
                 writer.writerow([
-                    folder['id'], get_parent_id(folder), path,
-                    count, size, human_readable_size(size),
-                    last_modified, owner, 'folder'
+                    path, count, size, human_readable_size(size),
+                    last_modified, owner, 'folder',
+                    folder['id'], get_parent_id(folder)
                 ])
 
         tree_lines = []
