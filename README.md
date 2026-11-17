@@ -30,7 +30,7 @@ Scans every Shared Drive the service account is a member of and writes two files
 - `YYYYMMDD_report_<label>_<drive id>.csv`
 - `YYYYMMDD_tree_<label>_<drive id>.txt`
 
-`<label>` is the drive name reduced to letters, digits, `_` and `-` (at most 60 characters). The drive id keeps files for drives with the same name apart. A drive whose id is not made of those characters is skipped with an error message.
+`<label>` is the drive name reduced to Unicode word characters and `-` (at most 60 characters), so a non-Latin name stays readable. The drive id keeps files for drives with the same name apart. A drive whose id is not ASCII letters, digits, `_` or `-` is skipped with an error message.
 
 ## Tests
 

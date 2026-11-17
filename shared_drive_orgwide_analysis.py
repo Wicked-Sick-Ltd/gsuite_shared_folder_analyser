@@ -16,7 +16,7 @@ SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly']
 OUTPUT_DIR = "reports"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 DRIVE_ID_PATTERN = re.compile(r'[A-Za-z0-9_-]+')
-UNSAFE_LABEL_CHARS = re.compile(r'[^A-Za-z0-9_-]+')
+UNSAFE_LABEL_CHARS = re.compile(r'[^\w-]+')
 MAX_LABEL_LENGTH = 60
 
 # Validate service account file

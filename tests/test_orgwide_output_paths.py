@@ -8,8 +8,8 @@ import sys
 import tempfile
 import types
 import unittest
+import unittest.mock
 from contextlib import redirect_stdout
-from unittest import mock
 
 SCRIPT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                       "shared_drive_orgwide_analysis.py")
@@ -89,7 +89,7 @@ class OrgwideOutputPathTests(unittest.TestCase):
         sa_file = os.path.join(self.workdir, "placeholder-service-account.json")
         with open(sa_file, "w") as f:
             f.write("{}")
-        self._env = mock.patch.dict(os.environ, {"SERVICE_ACCOUNT_FILE": sa_file})
+        self._env = unittest.mock.patch.dict(os.environ, {"SERVICE_ACCOUNT_FILE": sa_file})
         self._env.start()
         self.addCleanup(self._env.stop)
 
@@ -114,7 +114,7 @@ class OrgwideOutputPathTests(unittest.TestCase):
 
     def _run_scan(self, drives, files_by_drive):
         service = _FakeDriveService(drives, files_by_drive)
-        with mock.patch.dict(sys.modules, _fake_modules(service)), \
+        with unittest.mock.patch.dict(sys.modules, _fake_modules(service)), \
                 redirect_stdout(io.StringIO()) as out:
             runpy.run_path(SCRIPT, init_globals={"open": self._windows_open},
                            run_name="__main__")
@@ -174,6 +174,17 @@ class OrgwideOutputPathTests(unittest.TestCase):
             self.assertIn("Alpha,1,10", f.read())
         with open(trees[0]) as f:
             self.assertEqual(f.read(), "Alpha/")
+
+    def test_non_latin_drive_name_stays_in_the_filename(self):
+        self._run_scan(
+            [{'id': '0AEquipe', 'name': 'Équipe'},
+             {'id': '0AJapanese', 'name': '営業部'}],
+            {'0AEquipe': [], '0AJapanese': []})
+        self._assert_confined()
+        names = sorted(os.path.basename(p) for p in glob.glob("reports/*_report_*.csv"))
+        self.assertEqual(len(names), 2)
+        self.assertTrue(names[0].endswith("_report_Équipe_0AEquipe.csv"))
+        self.assertTrue(names[1].endswith("_report_営業部_0AJapanese.csv"))
 
 
 if __name__ == "__main__":
