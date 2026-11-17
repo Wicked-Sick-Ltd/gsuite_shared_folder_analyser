@@ -6,9 +6,9 @@ import sys
 import tempfile
 import types
 import unittest
+import unittest.mock
 from contextlib import redirect_stdout
 from io import StringIO
-from unittest import mock
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FOLDER_MIME = 'application/vnd.google-apps.folder'
@@ -99,9 +99,9 @@ class RootLevelFilesTest(unittest.TestCase):
 
     def _run_script(self, name, argv, env, drive_files=DRIVE_FILES):
         env = dict(env, SERVICE_ACCOUNT_FILE=self.service_account_file)
-        with mock.patch.dict(sys.modules, _stub_modules(drive_files)), \
-                mock.patch.dict(os.environ, env), \
-                mock.patch.object(sys, 'argv', argv), \
+        with unittest.mock.patch.dict(sys.modules, _stub_modules(drive_files)), \
+                unittest.mock.patch.dict(os.environ, env), \
+                unittest.mock.patch.object(sys, 'argv', argv), \
                 redirect_stdout(StringIO()) as out:
             runpy.run_path(os.path.join(REPO_ROOT, name), run_name='__main__')
         return out.getvalue()
