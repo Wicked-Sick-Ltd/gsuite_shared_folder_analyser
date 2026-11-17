@@ -21,7 +21,7 @@ python shared_drive_analysis.py --drive-id [DRIVE_ID] --verbose
 - `shared_drive_report.csv`
 - `tree.txt`
 
-The CSV has one `/` row (MimeType `shared_drive`) with the file count and size of every file in the drive. After that come one row per folder and one row per file that sits outside any listed folder, such as files at the shared-drive root, each with its own name, owner, size and MimeType. The `ID` column holds the Drive id of each row's item. `tree.txt` lists top-level folders followed by those root-level files.
+The CSV has one `/` row (MimeType `shared_drive`) with the file count and size of every file in the drive. After that come one row per folder and one row per file that sits outside any listed folder, such as files at the shared-drive root, each with its own name, size and MimeType. Owner Email is `unknown` when Drive leaves `owners` empty, which it does for items in a shared drive. The `ID` column holds the Drive id of each row's item. `tree.txt` lists top-level folders followed by those root-level files.
 
 ## Tests
 

@@ -5,13 +5,21 @@ import sys
 import tempfile
 import types
 import unittest
+import unittest.mock
 from pathlib import Path
-from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FOLDER = 'application/vnd.google-apps.folder'
 DRIVE_ID = 'drive-under-test'
 DRIVE_NAME = 'Team Drive'
+
+def listing_without_root_owner():
+    listing = [dict(item) for item in LISTING]
+    root = dict(listing[2])
+    del root['owners']
+    listing[2] = root
+    return listing
+
 
 LISTING = [
     {
@@ -116,10 +124,10 @@ class _ScriptHarness(unittest.TestCase):
         old_cwd = os.getcwd()
         os.chdir(self.tmp)
         try:
-            with mock.patch.dict(sys.modules, _stub_modules(pages)), \
-                    mock.patch.dict(os.environ, env), \
-                    mock.patch.object(sys, 'argv', [script] + argv), \
-                    mock.patch('builtins.print'):
+            with unittest.mock.patch.dict(sys.modules, _stub_modules(pages)), \
+                    unittest.mock.patch.dict(os.environ, env), \
+                    unittest.mock.patch.object(sys, 'argv', [script] + argv), \
+                    unittest.mock.patch('builtins.print'):
                 runpy.run_path(str(REPO_ROOT / script), run_name='__main__')
         finally:
             os.chdir(old_cwd)
@@ -189,6 +197,12 @@ class SingleDriveRootFilesTest(_ScriptHarness):
         self.assertEqual(tree.splitlines()[0], 'Projects/')
         self.assertNotIn('plan.pdf', tree)
 
+    def test_root_file_without_owners_reports_unknown(self):
+        rows, tree = self._run_single([listing_without_root_owner()])
+        self.assertRootFileReported(
+            rows, tree, 'root-file-id', 'root-secret.bin', 4096, 'unknown'
+        )
+
 
 class OrgWideRootFilesTest(_ScriptHarness):
     def test_root_level_file_is_reported(self):
@@ -204,6 +218,15 @@ class OrgWideRootFilesTest(_ScriptHarness):
             rows, tree, 'root-file-id', 'root-secret.bin', 4096, 'contributor@example.test'
         )
         self.assertDriveTotal(rows, count=2, size=4196)
+
+    def test_root_file_without_owners_reports_unknown(self):
+        self._run('shared_drive_orgwide_analysis.py', [], [listing_without_root_owner()])
+        csv_files = list((self.tmp / 'reports').glob('*_report_Team_Drive.csv'))
+        tree_files = list((self.tmp / 'reports').glob('*_tree_Team_Drive.txt'))
+        rows = self._read_csv(csv_files[0])
+        self.assertRootFileReported(
+            rows, tree_files[0].read_text(), 'root-file-id', 'root-secret.bin', 4096, 'unknown'
+        )
 
 
 if __name__ == '__main__':
