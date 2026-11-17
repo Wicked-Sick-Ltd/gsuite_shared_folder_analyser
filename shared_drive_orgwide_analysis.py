@@ -8,6 +8,8 @@ import os
 import csv
 from datetime import datetime
 
+from drive_paths import encode_path_segment
+
 # Load environment variables
 load_dotenv()
 SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE")
@@ -93,7 +95,7 @@ def get_folder_path(file_id, file_map):
     path = []
     while file_id in file_map:
         file = file_map[file_id]
-        path.append(file['name'])
+        path.append(encode_path_segment(file['name']))
         parents = file.get('parents')
         if not parents:
             break
@@ -101,7 +103,7 @@ def get_folder_path(file_id, file_map):
     return '/'.join(reversed(path))
 
 def print_tree(file, children, file_map, prefix='', out_lines=None):
-    line = f"{prefix}{file['name']}/"
+    line = f"{prefix}{encode_path_segment(file['name'])}/"
     if out_lines is not None:
         out_lines.append(line)
     for child in sorted(children.get(file['id'], []), key=lambda x: x['name']):

@@ -21,6 +21,17 @@ python shared_drive_analysis.py --drive-id [DRIVE_ID] --verbose
 - `shared_drive_report.csv`
 - `tree.txt`
 
+Folder names are percent-encoded in both outputs so each name stays one path
+segment and one tree line: `%`, `/`, `\`, line breaks and other non-printable
+characters, and leading spaces are escaped; a name made only of dots and spaces
+(such as `.` or `..`) is escaped entirely, and an empty name is written as
+`%00`. Decode each `/`-separated segment with `urllib.parse.unquote` to get the
+Drive name back.
+
+## Tests
+
+python3 -m unittest discover -s tests
+
 <!-- repository-guidance:begin -->
 ## Contributing and agent guidance
 
