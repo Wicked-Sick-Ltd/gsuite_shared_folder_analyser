@@ -2,9 +2,11 @@ import unicodedata
 
 # Drive names are free text, so a name can be '..', contain '/', or start
 # with the spaces the tree uses for nesting. Each name is percent-encoded so
-# it stays exactly one segment of a '/'-joined path and one line of the tree;
-# urllib.parse.unquote recovers the original name. '%' is always escaped, so
-# encoded output never collides with a literal name.
+# it stays exactly one segment of a '/'-joined path and one line of the tree.
+# '%' is always escaped, so an encoded segment does not equal some other name
+# written literally. The empty name and a name of a single NUL both encode to
+# EMPTY_NAME; decode that token as '', and decode every other segment with
+# urllib.parse.unquote.
 EMPTY_NAME = '%00'
 _SEPARATORS = ('%', '/', '\\')
 

@@ -26,7 +26,9 @@ segment and one tree line: `%`, `/`, `\`, line breaks and other non-printable
 characters, and leading spaces are escaped; a name made only of dots and spaces
 (such as `.` or `..`) is escaped entirely, and an empty name is written as
 `%00`. Decode each `/`-separated segment with `urllib.parse.unquote` to get the
-Drive name back.
+Drive name back, except the segment `%00`, which is an empty name.
+`unquote('%00')` is a NUL, and a folder whose name is a single NUL encodes to
+the same `%00`.
 
 ## Tests
 

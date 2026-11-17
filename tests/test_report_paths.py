@@ -6,8 +6,8 @@ import sys
 import tempfile
 import types
 import unittest
+import unittest.mock
 from pathlib import Path
-from unittest import mock
 from urllib.parse import unquote
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -124,10 +124,10 @@ class ReportPathTestMixin:
         self.addCleanup(self._tmp.cleanup)
         os.chdir(self.workdir)
         env = {'SERVICE_ACCOUNT_FILE': str(credentials)}
-        with mock.patch.dict(sys.modules, stub_modules()), \
-                mock.patch.dict(os.environ, env), \
-                mock.patch.object(sys, 'path', [str(REPO_ROOT)] + sys.path), \
-                mock.patch('builtins.print'):
+        with unittest.mock.patch.dict(sys.modules, stub_modules()), \
+                unittest.mock.patch.dict(os.environ, env), \
+                unittest.mock.patch.object(sys, 'path', [str(REPO_ROOT)] + sys.path), \
+                unittest.mock.patch('builtins.print'):
             self.csv_path, self.tree_path = self.run_script(self.workdir)
         with open(self.csv_path, newline='', encoding='utf-8') as f:
             self.rows = list(csv.DictReader(f))
@@ -202,7 +202,7 @@ class EncodePathSegmentTest(unittest.TestCase):
             encoded = self.encode(name)
             with self.subTest(name=name, encoded=encoded):
                 self.assertTrue(encoded)
-                self.assertFalse(set(encoded) <= {'.', ' '})
+                self.assertTrue(set(encoded) - {'.', ' '})
                 self.assertEqual(posixpath.normpath(f'a/{encoded}'), f'a/{encoded}')
                 if name:
                     self.assertEqual(unquote(encoded), name)
@@ -222,6 +222,11 @@ class EncodePathSegmentTest(unittest.TestCase):
         self.assertNotEqual(self.encode('..'), self.encode('%2E%2E'))
         self.assertNotEqual(self.encode(''), self.encode('%00'))
 
+    def test_empty_name_and_nul_share_one_token(self):
+        self.assertEqual(self.encode(''), '%00')
+        self.assertEqual(self.encode('\x00'), '%00')
+        self.assertEqual(unquote('%00'), '\x00')
+
 
 class SingleDriveScriptTest(ReportPathTestMixin, unittest.TestCase):
     def run_script(self, workdir):
@@ -229,7 +234,7 @@ class SingleDriveScriptTest(ReportPathTestMixin, unittest.TestCase):
         tree_path = workdir / 'tree.txt'
         env = {'OUTPUT_CSV': str(csv_path), 'OUTPUT_TREE': str(tree_path)}
         argv = ['shared_drive_analysis.py', '--drive-id', DRIVE_ID]
-        with mock.patch.dict(os.environ, env), mock.patch.object(sys, 'argv', argv):
+        with unittest.mock.patch.dict(os.environ, env), unittest.mock.patch.object(sys, 'argv', argv):
             runpy.run_path(str(REPO_ROOT / 'shared_drive_analysis.py'), run_name='__main__')
         return csv_path, tree_path
 
