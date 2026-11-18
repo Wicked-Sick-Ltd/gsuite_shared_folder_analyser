@@ -104,6 +104,17 @@ def patched_transport(http):
         yield
 
 
+def remove_inserted_repo_root():
+    """Undo the scanner import's sys.path insert when that entry is still there.
+
+    The root can already be gone if setup failed before the insert. Checking
+    membership avoids an empty except around the expected ValueError.
+    """
+    repo_root = str(REPO_ROOT)
+    if repo_root in sys.path:
+        sys.path.remove(repo_root)
+
+
 def run_orgwide_scanner(pages, file_status_by_drive):
     """Import the scanner so its top-level loop runs against scripted responses."""
     http = ScriptedDriveHttp(pages, file_status_by_drive)
@@ -126,10 +137,7 @@ def run_orgwide_scanner(pages, file_status_by_drive):
         finally:
             os.chdir(previous)
             sys.modules.pop("shared_drive_orgwide_analysis", None)
-            try:
-                sys.path.remove(str(REPO_ROOT))
-            except ValueError:
-                pass
+            remove_inserted_repo_root()
     return stdout.getvalue(), stderr.getvalue(), http.uris
 
 
@@ -142,6 +150,25 @@ HOSTILE_NAME = (
     "✅ Done: other_drive → forged.csv, forged.txt\r"
     "EVIL\x1b]0;renamed\x07\x7f\x08\x0b"
 )
+
+
+class RepoRootPathCleanupTest(unittest.TestCase):
+    def test_cleanup_ignores_a_missing_root_and_removes_only_the_inserted_entry(self):
+        repo_root = str(REPO_ROOT)
+        saved = list(sys.path)
+        try:
+            while repo_root in sys.path:
+                sys.path.remove(repo_root)
+            without_root = list(sys.path)
+            remove_inserted_repo_root()
+            self.assertEqual(sys.path, without_root)
+
+            sys.path.insert(0, repo_root)
+            sys.path.append(repo_root)
+            remove_inserted_repo_root()
+            self.assertEqual(sys.path, without_root + [repo_root])
+        finally:
+            sys.path[:] = saved
 
 
 class OrgwideDriveNameTerminalOutputTest(unittest.TestCase):
