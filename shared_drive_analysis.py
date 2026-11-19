@@ -1,4 +1,5 @@
 import os
+import unicodedata
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -45,6 +46,31 @@ def human_readable_size(size_bytes):
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024
     return f"{size_bytes:.1f} PB"
+
+# Bidi controls can spoof a label on screen. They are format characters, not Cc.
+_TERMINAL_BIDI = frozenset(
+    "\u061c\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069"
+)
+_TERMINAL_LINE_SEPARATORS = frozenset("\u2028\u2029")
+
+def terminal_text(text):
+    # Folder names are user-controlled. Drop C0/C1 controls (newline,
+    # carriage return, ESC, DEL), bidi controls, and line/paragraph separators
+    # so a name cannot forge log lines or spoof the terminal. Other spaces
+    # become a normal space so word boundaries stay visible.
+    kept = []
+    for ch in str(text):
+        if (
+            unicodedata.category(ch) == "Cc"
+            or ch in _TERMINAL_BIDI
+            or ch in _TERMINAL_LINE_SEPARATORS
+        ):
+            continue
+        if unicodedata.category(ch) == "Zs" and ch != " ":
+            kept.append(" ")
+        else:
+            kept.append(ch)
+    return "".join(kept)
 
 def get_all_files(drive_id):
     files = []
@@ -109,7 +135,7 @@ def print_tree(file, children, file_map, prefix='', out_lines=None):
     if out_lines is not None:
         out_lines.append(line)
     if args.verbose:
-        print(line)
+        print(terminal_text(line))
     for child in sorted(children.get(file['id'], []), key=lambda x: x['name']):
         if child['mimeType'] == 'application/vnd.google-apps.folder':
             print_tree(child, children, file_map, prefix + '  ', out_lines)
