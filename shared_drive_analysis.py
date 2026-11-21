@@ -17,6 +17,7 @@ print("SERVICE_ACCOUNT_FILE loaded:", SERVICE_ACCOUNT_FILE)
 # === DEPENDENCIES ===
 import argparse
 import csv
+import unicodedata
 from collections import defaultdict
 from datetime import datetime
 
@@ -104,15 +105,60 @@ def get_folder_path(file_id, file_map):
         file_id = parents[0]
     return '/'.join(reversed(path))
 
-def print_tree(file, children, file_map, prefix='', out_lines=None):
-    line = f"{prefix}{file['name']}/"
+_NAMED_ESCAPES = {'\t': '\\t', '\n': '\\n', '\r': '\\r'}
+# Not whitespace to str.isspace(), but rendered as blank columns.
+_BLANK_GLYPHS = {'\u115f', '\u1160', '\u2800', '\u3164', '\uffa0'}
+# Bidi overrides and isolates can reorder the visible columns of a line.
+_BIDI_CONTROLS = {
+    '\u202a', '\u202b', '\u202c', '\u202d', '\u202e',
+    '\u2066', '\u2067', '\u2068', '\u2069',
+}
+
+def _escape_char(ch):
+    if ch == '\\':
+        return '\\\\'
+    if ch in _NAMED_ESCAPES:
+        return _NAMED_ESCAPES[ch]
+    code = ord(ch)
+    if code <= 0xff:
+        return f"\\x{code:02x}"
+    if code <= 0xffff:
+        return f"\\u{code:04x}"
+    return f"\\U{code:08x}"
+
+def tree_label(name):
+    # A tree line's depth is shown only by its space prefix, so the name must
+    # not move its first visible column or break the line. After the first
+    # character, joiners and private-use characters stay as typed.
+    out = []
+    for i, ch in enumerate(name):
+        category = unicodedata.category(ch)
+        hidden = (
+            ch == '\\'
+            or category == 'Cc'
+            or category in ('Zl', 'Zp')
+            or ch in _BIDI_CONTROLS
+        )
+        if i == 0:
+            hidden = (
+                hidden
+                or category[0] == 'C'
+                or ch.isspace()
+                or ch in _BLANK_GLYPHS
+                or category[0] == 'M'
+            )
+        out.append(_escape_char(ch) if hidden else ch)
+    return ''.join(out)
+
+def print_tree(file, children, file_map, depth=0, out_lines=None):
+    line = f"{'  ' * depth}{tree_label(file['name'])}/"
     if out_lines is not None:
         out_lines.append(line)
     if args.verbose:
         print(line)
     for child in sorted(children.get(file['id'], []), key=lambda x: x['name']):
         if child['mimeType'] == 'application/vnd.google-apps.folder':
-            print_tree(child, children, file_map, prefix + '  ', out_lines)
+            print_tree(child, children, file_map, depth + 1, out_lines)
 
 # === MAIN ===
 files = get_all_files(args.drive_id)
@@ -143,7 +189,7 @@ with open(OUTPUT_CSV, 'w', newline='', encoding='utf-8') as csvfile:
 tree_lines = []
 for folder in sorted(folders, key=lambda x: x['name']):
     if not any(parent in file_map for parent in folder.get('parents', [])):
-        print_tree(folder, children, file_map, '', tree_lines)
+        print_tree(folder, children, file_map, 0, tree_lines)
 
 with open(OUTPUT_TREE, 'w', encoding='utf-8') as f:
     f.write('\n'.join(tree_lines))
