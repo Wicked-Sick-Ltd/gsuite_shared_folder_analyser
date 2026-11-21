@@ -21,6 +21,23 @@ python shared_drive_analysis.py --drive-id [DRIVE_ID] --verbose
 - `shared_drive_report.csv`
 - `tree.txt`
 
+## Org-wide scan
+
+python shared_drive_orgwide_analysis.py
+
+Scans every Shared Drive the service account is a member of and writes two files per drive into `reports/`:
+
+- `YYYYMMDD_report_<label>_<drive id>.csv`
+- `YYYYMMDD_tree_<label>_<drive id>.txt`
+
+`<label>` is the drive name reduced to Unicode word characters and `-` (at most 60 characters), so a non-Latin name stays readable. The drive id keeps files for drives with the same name apart. A drive whose id is not ASCII letters, digits, `_` or `-` is skipped with an error message.
+
+## Tests
+
+python3 -m unittest discover -s tests
+
+The tests replace the Google API client with fakes and need no credentials or network access.
+
 <!-- repository-guidance:begin -->
 ## Contributing and agent guidance
 
