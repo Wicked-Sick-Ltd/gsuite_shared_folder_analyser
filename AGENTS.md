@@ -31,7 +31,7 @@ Repo company: **Wicked Sick**. Full inventory at `wicked-repo-inventory/PORTFOLI
 
 A Python tool to crawl a Google Shared Drive, output a folder tree with sizes, file counts, and export a CSV and tree view.
 
-- Key files: `shared_drive_analysis.py`.
+- Key files: `shared_drive_analysis.py` (one drive), `shared_drive_orgwide_analysis.py` (every drive), `tests/` (unittest, Google APIs stubbed).
 
 ## Development and Validation
 
@@ -39,6 +39,7 @@ Use Python (see requirements and CI for the supported version). Run commands fro
 
 - `python3 -m venv .venv` — create an isolated environment.
 - `.venv/bin/python -m pip install -r requirements.txt` — install Python dependencies.
+- `python3 -m unittest discover -s tests` — run the tests; they stub the Google client, `tqdm` and `dotenv`, so no credentials or installed dependencies are needed.
 
 ## Coding and Testing
 
