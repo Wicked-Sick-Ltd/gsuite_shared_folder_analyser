@@ -89,11 +89,20 @@ def get_size_and_details(file, children, file_map):
         size = int(file.get('size', 0))
         return size, 1, file.get('modifiedTime', '1970-01-01T00:00:00Z')
 
+def escape_name(name):
+    # Backslash is escaped first so the encoding stays reversible and a
+    # name can never reproduce the separator of a deeper path.
+    return name.replace('\\', '\\\\').replace('/', '\\/')
+
+def get_parent_id(file):
+    parents = file.get('parents') or ['']
+    return parents[0]
+
 def get_folder_path(file_id, file_map):
     path = []
     while file_id in file_map:
         file = file_map[file_id]
-        path.append(file['name'])
+        path.append(escape_name(file['name']))
         parents = file.get('parents')
         if not parents:
             break
@@ -101,7 +110,7 @@ def get_folder_path(file_id, file_map):
     return '/'.join(reversed(path))
 
 def print_tree(file, children, file_map, prefix='', out_lines=None):
-    line = f"{prefix}{file['name']}/"
+    line = f"{prefix}{escape_name(file['name'])}/"
     if out_lines is not None:
         out_lines.append(line)
     for child in sorted(children.get(file['id'], []), key=lambda x: x['name']):
@@ -129,7 +138,8 @@ for drive in shared_drives:
             writer = csv.writer(csvfile)
             writer.writerow([
                 'Folder Path', 'File Count', 'Total Size (Bytes)', 'Readable Size',
-                'Latest Modified Time', 'Owner Email', 'MimeType'
+                'Latest Modified Time', 'Owner Email', 'MimeType',
+                'Folder ID', 'Parent ID'
             ])
 
             for folder in tqdm(folders, desc=f"Analyzing {drive_name}"):
@@ -138,7 +148,8 @@ for drive in shared_drives:
                 owner = folder.get('owners', [{}])[0].get('emailAddress', 'unknown')
                 writer.writerow([
                     path, count, size, human_readable_size(size),
-                    last_modified, owner, 'folder'
+                    last_modified, owner, 'folder',
+                    folder['id'], get_parent_id(folder)
                 ])
 
         tree_lines = []

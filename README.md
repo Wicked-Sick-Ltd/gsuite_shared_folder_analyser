@@ -21,6 +21,16 @@ python shared_drive_analysis.py --drive-id [DRIVE_ID] --verbose
 - `shared_drive_report.csv`
 - `tree.txt`
 
+`shared_drive_orgwide_analysis.py` writes the same outputs for every Shared Drive the service account can see, under `reports/`.
+
+Each CSV row keeps the original columns in their previous positions and adds `Folder ID` and `Parent ID` at the end (the Drive ID for top-level folders). Use those ids, not `Folder Path`, as the identity of a folder. In `Folder Path` and the tree, a `/` or `\` that is part of a folder name is written as `\/` or `\\`, so an unescaped `/` always separates a parent from its child.
+
+## Tests
+
+python3 -m unittest discover -s tests
+
+The tests stub the Google client libraries and need no credentials or network access.
+
 <!-- repository-guidance:begin -->
 ## Contributing and agent guidance
 
