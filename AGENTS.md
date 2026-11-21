@@ -40,6 +40,10 @@ Use Python (see requirements and CI for the supported version). Run commands fro
 - `python3 -m venv .venv` — create an isolated environment.
 - `.venv/bin/python -m pip install -r requirements.txt` — install Python dependencies.
 
+## Cloud agent environment
+
+Cursor Cloud Agents install with `bash .cursor/install.sh`, configured in `.cursor/environment.json`. The script is idempotent and non-interactive. It warns and continues when `SERVICE_ACCOUNT_FILE` (path to a Google service account JSON file) is unset or the file is missing. Never commit that JSON or `.env`. There is no automated test or lint suite. The entry scripts import `python-dotenv`, which is not in `requirements.txt`.
+
 ## Coding and Testing
 
 Match the indentation and naming of neighboring files; avoid unrelated reformatting. Use the checks documented in the README and component directories; do not claim an automated suite exists without verifying it. Keep changes focused and follow existing test filenames. Add regression coverage for behavior changes, using isolated fixtures instead of live customer data. For documentation-only edits, verify commands, local links, and `git diff --check`.

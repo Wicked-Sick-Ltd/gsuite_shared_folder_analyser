@@ -1,0 +1,4 @@
+{
+  "name": "gsuite shared drive analyser",
+  "install": "bash .cursor/install.sh"
+}
