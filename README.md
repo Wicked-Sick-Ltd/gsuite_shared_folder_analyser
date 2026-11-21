@@ -21,6 +21,14 @@ python shared_drive_analysis.py --drive-id [DRIVE_ID] --verbose
 - `shared_drive_report.csv`
 - `tree.txt`
 
+`shared_drive_orgwide_analysis.py` writes the same CSV and tree for every Shared Drive the service account can list, under `reports/`.
+
+Each CSV starts with a drive-root row (`Folder Path` `/`, `MimeType` `drive`) totalling every file in the drive, followed by one row per folder, then one row per file stored directly at the drive root (with its own MimeType). The tree lists folders only.
+
+## Tests
+
+python3 -m unittest discover -s tests
+
 <!-- repository-guidance:begin -->
 ## Contributing and agent guidance
 
