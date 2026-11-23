@@ -18,7 +18,7 @@ Cursor Cloud Agents run `bash .cursor/install.sh` (see `.cursor/environment.json
 
 The crawler reads `SERVICE_ACCOUNT_FILE`, a path to a Google service account JSON file. If that variable is unset or the file is missing, install prints a warning and still succeeds. Do not commit the JSON, `.env`, or any other credential.
 
-There is no test suite and no linter config in this repository. Both entry scripts import `python-dotenv`, which is not listed in `requirements.txt`, so a clean install cannot import them until that package is added.
+Tests are `python3 -m unittest discover -s tests`. There is no linter config. Both entry scripts import `python-dotenv`, which is not listed in `requirements.txt`, so a clean install cannot import them until that package is added.
 
 ## Usage
 
@@ -33,9 +33,13 @@ python shared_drive_analysis.py --drive-id [DRIVE_ID] --verbose
 
 Each CSV starts with a drive-root row (`Folder Path` `/`, `MimeType` `drive`) totalling every file in the drive, followed by one row per folder, then one row per file stored directly at the drive root (with its own MimeType). The tree lists folders only.
 
+Each row keeps the original columns in their previous positions and adds `Folder ID` and `Parent ID` at the end. For a folder, `Parent ID` is the Drive ID when the folder is at the top level. For the drive-root row, `Folder ID` is the Drive ID and `Parent ID` is empty. A root-level file uses its own file id and parent id in those columns. Use the ids, not `Folder Path`, as the identity of a row. In `Folder Path` and the tree, a `/` or `\` that is part of a name is written as `\/` or `\\`, so an unescaped `/` always separates a parent from its child.
+
 ## Tests
 
 python3 -m unittest discover -s tests
+
+The tests stub the Google client libraries and need no credentials or network access.
 
 <!-- repository-guidance:begin -->
 ## Contributing and agent guidance
