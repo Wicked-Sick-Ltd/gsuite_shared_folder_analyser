@@ -13,9 +13,10 @@ parent links justify, and a tab later in the name shifts the rest of the name
 to a later stop.
 
 These tests fail while that raw name is written. They pass when each tab in a
-folder name is deleted or replaced by one or two non-whitespace characters
-before the line is built, the line does not start the name with whitespace,
-and the two-space indent is still exactly the depth of the parent chain.
+folder name is deleted, replaced by one or two non-whitespace characters, or
+percent-encoded as %09 before the line is built, the line does not start the
+name with whitespace, and the two-space indent is still exactly the depth of
+the parent chain.
 Replacing a tab with spaces, or calling expandtabs on the name, keeps the
 forged indent and must still fail.
 
@@ -133,13 +134,17 @@ def tabs_neutralized(label: str, name: str) -> bool:
             )
         if rec(label_index, name_index + 1):
             return True
-        for width in (1, 2):
+        for width in (1, 2, 3):
             end = label_index + width
             if end > len(label):
                 break
             chunk = label[label_index:end]
             if any(char.isspace() for char in chunk):
                 break
+            # A tab may be deleted, replaced by one or two visible characters,
+            # or percent-encoded as %09. Spaces still forge a deeper column.
+            if width == 3 and not (len(chunk) == 3 and chunk[0] == "%" and all(c in "0123456789ABCDEFabcdef" for c in chunk[1:])):
+                continue
             if rec(end, name_index + 1):
                 return True
         return False
@@ -223,6 +228,9 @@ RUNNER = textwrap.dedent(
     discovery.build = MagicMock(return_value=service)
 
     sys.argv = json.loads(os.environ["TEST_ARGV"])
+    # python script.py puts the script directory on sys.path. runpy.run_path
+    # of a file does not, so the local drive_paths import would miss it.
+    sys.path.insert(0, os.path.dirname(os.environ["TEST_SCRIPT"]))
     import runpy
     runpy.run_path(os.environ["TEST_SCRIPT"], run_name="__main__")
     """

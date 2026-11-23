@@ -18,7 +18,7 @@ Cursor Cloud Agents run `bash .cursor/install.sh` (see `.cursor/environment.json
 
 The crawler reads `SERVICE_ACCOUNT_FILE`, a path to a Google service account JSON file. If that variable is unset or the file is missing, install prints a warning and still succeeds. Do not commit the JSON, `.env`, or any other credential.
 
-There is no test suite and no linter config in this repository. Both entry scripts import `python-dotenv`, which is not listed in `requirements.txt`, so a clean install cannot import them until that package is added.
+Tests are `python3 -m unittest discover -s tests`. There is no linter config. Both entry scripts import `python-dotenv`, which is not listed in `requirements.txt`, so a clean install cannot import them until that package is added.
 
 ## Usage
 
@@ -31,7 +31,16 @@ python shared_drive_analysis.py --drive-id [DRIVE_ID] --verbose
 
 `shared_drive_orgwide_analysis.py` writes the same CSV and tree for every Shared Drive the service account can list, under `reports/`.
 
-Each CSV starts with a drive-root row (`Folder Path` `/`, `MimeType` `drive`) totalling every file in the drive, followed by one row per folder, then one row per file stored directly at the drive root (with its own MimeType). The tree lists folders only.
+Each CSV starts with a drive-root row (`Folder Path` `/`, `MimeType` `drive`) totalling every file in the drive, followed by one row per folder, then one row per file stored directly at the drive root (with its own MimeType). The tree lists folders only. The drive-root path stays `/`; it is not a folder name.
+
+Folder names are percent-encoded in both outputs so each name stays one path
+segment and one tree line: `%`, `/`, `\`, line breaks and other non-printable
+characters, and leading spaces are escaped; a name made only of dots and spaces
+(such as `.` or `..`) is escaped entirely, and an empty name is written as
+`%00`. Decode each `/`-separated segment with `urllib.parse.unquote` to get the
+Drive name back, except the segment `%00`, which is an empty name.
+`unquote('%00')` is a NUL, and a folder whose name is a single NUL encodes to
+the same `%00`.
 
 ## Tests
 

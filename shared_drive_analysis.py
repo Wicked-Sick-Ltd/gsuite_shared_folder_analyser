@@ -24,6 +24,8 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from tqdm import tqdm
 
+from drive_paths import encode_path_segment
+
 
 # === ARGUMENT PARSER ===
 parser = argparse.ArgumentParser(description='Analyze Google Shared Drive')
@@ -119,7 +121,7 @@ def get_folder_path(file_id, file_map):
     path = []
     while file_id in file_map:
         file = file_map[file_id]
-        path.append(file['name'])
+        path.append(encode_path_segment(file['name']))
         parents = file.get('parents')
         if not parents:
             break
@@ -127,7 +129,7 @@ def get_folder_path(file_id, file_map):
     return '/'.join(reversed(path))
 
 def print_tree(file, children, file_map, prefix='', out_lines=None):
-    line = f"{prefix}{file['name']}/"
+    line = f"{prefix}{encode_path_segment(file['name'])}/"
     if out_lines is not None:
         out_lines.append(line)
     if args.verbose:
