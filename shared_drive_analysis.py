@@ -95,6 +95,28 @@ def get_size_and_details(file, children, file_map):
         size = int(file.get('size', 0))
         return size, 1, file.get('modifiedTime', '1970-01-01T00:00:00Z')
 
+def is_folder(file):
+    return file['mimeType'] == 'application/vnd.google-apps.folder'
+
+def get_root_items(files, file_map):
+    # Items at the drive root have the drive id as parent, which is not in file_map.
+    return [
+        f for f in files
+        if not any(parent in file_map and is_folder(file_map[parent]) for parent in f.get('parents', []))
+    ]
+
+def get_drive_totals(files):
+    total_size, total_count = 0, 0
+    latest_modified = '1970-01-01T00:00:00Z'
+    for file in files:
+        if not is_folder(file):
+            total_size += int(file.get('size', 0))
+            total_count += 1
+        last_mod = file.get('modifiedTime', '1970-01-01T00:00:00Z')
+        if last_mod > latest_modified:
+            latest_modified = last_mod
+    return total_size, total_count, latest_modified
+
 def get_folder_path(file_id, file_map):
     path = []
     while file_id in file_map:
@@ -120,6 +142,7 @@ def print_tree(file, children, file_map, prefix='', out_lines=None):
 files = get_all_files(args.drive_id)
 file_map, children = build_tree(files)
 folders = [f for f in files if f['mimeType'] == 'application/vnd.google-apps.folder']
+root_files = [f for f in get_root_items(files, file_map) if not is_folder(f)]
 
 if args.verbose:
     print(f"Processing {len(folders)} folders...")
@@ -132,6 +155,12 @@ with open(OUTPUT_CSV, 'w', newline='', encoding='utf-8') as csvfile:
         'Latest Modified Time', 'Owner Email', 'MimeType'
     ])
 
+    size, count, last_modified = get_drive_totals(files)
+    writer.writerow([
+        '/', count, size, human_readable_size(size),
+        last_modified, 'unknown', 'drive'
+    ])
+
     for folder in tqdm(folders, desc="Analyzing folders"):
         size, count, last_modified = get_size_and_details(folder, children, file_map)
         path = get_folder_path(folder['id'], file_map)
@@ -139,6 +168,15 @@ with open(OUTPUT_CSV, 'w', newline='', encoding='utf-8') as csvfile:
         writer.writerow([
             path, count, size, human_readable_size(size),
             last_modified, owner, 'folder'
+        ])
+
+    for item in sorted(root_files, key=lambda x: x['name']):
+        size, count, last_modified = get_size_and_details(item, children, file_map)
+        path = get_folder_path(item['id'], file_map)
+        owner = item.get('owners', [{}])[0].get('emailAddress', 'unknown')
+        writer.writerow([
+            path, count, size, human_readable_size(size),
+            last_modified, owner, item['mimeType']
         ])
 
 # Write Tree

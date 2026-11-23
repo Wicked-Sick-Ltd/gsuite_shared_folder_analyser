@@ -134,11 +134,18 @@ class ReportPathTestMixin:
         self.tree_lines = self.tree_path.read_text(encoding='utf-8').split('\n')
 
     def test_every_folder_is_reported(self):
-        self.assertEqual(len(self.rows), len(EXPECTED_PATHS))
+        folder_rows = [row for row in self.rows if row['MimeType'] == 'folder']
+        self.assertEqual(len(folder_rows), len(EXPECTED_PATHS))
+        drive_rows = [row for row in self.rows if row['MimeType'] == 'drive']
+        self.assertEqual(len(drive_rows), 1)
+        self.assertEqual(drive_rows[0]['Folder Path'], '/')
 
     def test_csv_paths_survive_normalization(self):
         for row in self.rows:
             path = row['Folder Path']
+            if row['MimeType'] == 'drive':
+                self.assertEqual(path, '/')
+                continue
             segments = path.split('/')
             with self.subTest(path=path):
                 self.assertTrue(all(segments), path)
