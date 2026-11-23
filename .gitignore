@@ -2,8 +2,11 @@
 .env
 *.json
 service_account.json
+# Repo-managed Cursor config. Contains no credentials.
+!.cursor/environment.json
 
 # Python cruft
+.venv/
 __pycache__/
 *.pyc
 

@@ -171,10 +171,16 @@ class FolderPathCsvMixin:
 
     def test_rows_carry_folder_and_parent_ids(self):
         rows = self.read_rows()
-        by_id = {row['Folder ID']: row for row in rows}
+        folder_rows = [row for row in rows if row['MimeType'] == 'folder']
+        by_id = {row['Folder ID']: row for row in folder_rows}
         self.assertEqual(set(by_id), {f['id'] for f in SPOOF_FILES})
         self.assertEqual(by_id['payroll']['Parent ID'], 'finance')
         self.assertEqual(by_id['spoof']['Parent ID'], DRIVE_ID)
+        drive_rows = [row for row in rows if row['MimeType'] == 'drive']
+        self.assertEqual(len(drive_rows), 1)
+        self.assertEqual(drive_rows[0]['Folder Path'], '/')
+        self.assertEqual(drive_rows[0]['Folder ID'], DRIVE_ID)
+        self.assertEqual(drive_rows[0]['Parent ID'], '')
 
     def test_lookalike_slash_rows_are_distinguished_by_parent_id(self):
         files = [
